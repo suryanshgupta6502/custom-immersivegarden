@@ -61,6 +61,7 @@ window.addEventListener("mousemove", (event) => {
 const raycaster = new three.Raycaster();
 
 let model
+let originalZ
 gltfloader.load("reliefs_high_compressed.glb", (e) => {
     // console.log(e.scene.children[0].geometry.attributes);
 
@@ -68,7 +69,7 @@ gltfloader.load("reliefs_high_compressed.glb", (e) => {
     console.log(attributes.position, attributes.position.count);
 
     // Store original Z values
-    const originalZ = [];
+    originalZ = [];
     for (let i = 0; i < attributes.position.count; i++) {
         originalZ.push(attributes.position.getZ(i));
     }
@@ -76,21 +77,21 @@ gltfloader.load("reliefs_high_compressed.glb", (e) => {
     // console.log(originalZ);
 
 
-    // for (let i = 0; i < attributes.position.count; i++) {
+    for (let i = 0; i < attributes.position.count; i++) {
 
-    //     if (i < 15000) {
-    //         // console.log(attributes.position.getZ(i));
-    //         attributes.position.setZ(i, 0);
-    //     }
-    //     attributes.position.setZ(i, 0);
-    // }
+        //     if (i < 15000) {
+        //         attributes.position.setZ(i, 0);
+        //     }
+        attributes.position.setZ(i, 0);
+        // console.log(attributes.position.getZ(i));
+    }
 
     // attributes.position.needsUpdate = true;
     // e.scene.children[0].geometry.computeVertexNormals();
 
     // console.log(e.scene.children[0]);
 
-    e.scene.children[0].material.wireframe = true
+    // e.scene.children[0].material.wireframe = true
     model = e.scene.children[0]
     scene.add(model)
 
@@ -130,68 +131,87 @@ function animate() {
 
 
     raycaster.setFromCamera(mouse, camera)
+    // console.log(originalZ);
+
+    if (originalZ) {
+        for (let index = 0; index < originalZ.length; index++) {
+            model.geometry.attributes.position.setZ(index, 0)
+            // const element = originalZ[index];
+
+        }
+    }
+
+
     if (model) {
 
         const intersects = raycaster.intersectObject(model);
         // console.log(intersects);
         // console.log(intersects[0]);
 
+        // if (intersects[0]) {
+
+
+        //     const index1 = intersects[0].face.a
+        //     const index2 = intersects[0].face.b
+        //     const index3 = intersects[0].face.c
+
+        //     model.geometry.attributes.position.setZ(index1, 10)
+        //     model.geometry.attributes.position.setZ(index2, 10)
+        //     model.geometry.attributes.position.setZ(index3, 10)
+        //     // model.geometry.position
+        //     console.log(index1);
+
+
+
+        // }
+
+
+        // model.geometry.attributes.position.needsUpdate = true;
+
+
+
         if (intersects[0]) {
+            const hitPoint = intersects[0].point;
+            const radius = 2; // 👈 Increase this to grow the effect area
+
+            const posAttr = model.geometry.attributes.position;
+            const vertex = new three.Vector3();
+            const worldVertex = new three.Vector3();
+
+            // console.log(posAttr);
 
 
-            const index1 = intersects[0].face.a
-            const index2 = intersects[0].face.b
-            const index3 = intersects[0].face.c
+            for (let i = 0; i < posAttr.count; i++) {
+                vertex.fromBufferAttribute(posAttr, i);
+                // console.log( vertex.fromBufferAttribute(posAttr, i))
 
-            model.geometry.attributes.position.setZ(index1, 10)
-            model.geometry.attributes.position.setZ(index2, 10)
-            model.geometry.attributes.position.setZ(index3, 10)
-            model.geometry.attributes.position.needsUpdate = true;
-            // model.geometry.position
-            console.log(index1);
+                worldVertex.copy(vertex).applyMatrix4(model.matrixWorld);
+                // console.log(worldVertex, vertex);
 
 
+                const dist = worldVertex.distanceTo(hitPoint);
 
-            // const { a, b, c } = intersects[0].face
-            // const pos = model.geometry.attributes.position;
+                if (dist < radius) {
+                    const intensity = 1 - dist / radius;
+                    const newZ = originalZ[i] + intensity * .5;
+                    posAttr.setZ(i, newZ);
+                    // posAttr.setZ(i, originalZ[i] + 1); // Push up only within the radius
+                    // posAttr.setZ(i, originalZ[i] + 1);
+                }
+            }
 
-
-            // for (let i = 0; i < pos.count; i++) {
-
-
-
-            //     // console.log(pos.getZ(i));
-            //     // const element = pos[i];
-            //     // pos
-
-            // }
-
-
-            // const va = new three.Vector3().fromBufferAttribute(pos, a);
-
-
-
-
-            // model.geometry.attributes.position
-
-            // console.log(model.geometry.attributes)
-
-
-
-
-
-            // const vb = new three.Vector3().fromBufferAttribute(pos, b);
-            // const vc = new three.Vector3().fromBufferAttribute(pos, c);
-
-            // console.log(va);
-            // console.log(va, vb, vc);
-
-
-            // console.log(intersects[0].face);
+            posAttr.needsUpdate = true;
         }
 
 
+
+
+
+
     }
+
+
+
 
 
     window.requestAnimationFrame(animate)
